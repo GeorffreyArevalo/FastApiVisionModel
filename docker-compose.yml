@@ -1,0 +1,19 @@
+
+
+
+services:
+
+  postgres-db:
+    image: postgres:15.3
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_DB: chat
+      POSTGRES_PASSWORD: '123456'
+    volumes:
+      - db-chat:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+
+volumes:
+  db-chat:
+    external: false

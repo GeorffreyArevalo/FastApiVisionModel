@@ -1,0 +1,15 @@
+"fastapi[standard]"
+sqlalchemy
+psycopg2-binary
+"passlib[bcrypt]"
+types-passlib
+pyjwt
+python-multipart
+cloudinary
+python-dotenv
+transformers
+pillow
+torch
+"accelerate>=0.26.0"
+huggingface_hub
+bitsandbytes
