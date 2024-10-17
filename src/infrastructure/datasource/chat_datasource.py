@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from src.data.models.chat_model import ChatModel
 from src.utils.load_db_vectorial import VectorialDB
 from src.utils.load_model import ModelProcessor
-
+import copy
 
 class ChatDataSource:
         
@@ -20,19 +20,26 @@ class ChatDataSource:
         
         [messages_db, url_image_db] = ChatDataSource.get_memory_model(image, id_chat, question)
         
+        url_image = ''
+        if image:
+            print('==============> Imagen en el Data Sources')
+            print(f'Image is None: {image.size}')
+            image_content = image.file
+            upload_result = upload(image_content, folder='chat')
+            url_image = upload_result['secure_url']
+
         image_pillow = None
-        
         if url_image_db:
             image_pillow = Image.open( requests.get(url_image_db, stream=True).raw )
-            
+        
         if image:
             image_pillow = Image.open( image.file )
-        
+                
         response = ChatDataSource.get_response_model( question, image_pillow, messages_db, image is not None )
         
         response_split = response.split('<|start_header_id|>assistant<|end_header_id|>\n\n')[-1].split('<|eot_id|>')[0]
         
-        ChatDataSource.save_data_db_vectorial( image=image, question=question, response_split=response_split, id_chat=id_chat )
+        ChatDataSource.save_data_db_vectorial( url_image=url_image, question=question, response_split=response_split, id_chat=id_chat )
         
         return {
             "question": question,
@@ -41,9 +48,9 @@ class ChatDataSource:
         
         
     @staticmethod
-    def get_memory_model(image: UploadFile | None, id_chat: int, question: str):
-        [ vstore ] = VectorialDB.get_db_vectorial()
-        
+    def get_memory_model(image: str | None, id_chat: int, question: str):
+        [ vstore, *_ ] = VectorialDB.get_db_vectorial()
+
         messages_vectorial = vstore.similarity_search( filter={'id_chat': id_chat}, query=question, k=10 )
         messages_vectorial_images = vstore.similarity_search( filter={ "image": {"$exists": True, "$ne": ""} }, query='' )
         
@@ -75,12 +82,8 @@ class ChatDataSource:
     
         
     @staticmethod
-    def save_data_db_vectorial( image: UploadFile | None, question: str, response_split: str, id_chat: int):
+    def save_data_db_vectorial( url_image: str, question: str, response_split: str, id_chat: int):
         [ vstore, embeddings, INDEX_NAME ] = VectorialDB.get_db_vectorial()
-        url_image = ''
-        if image:
-            upload_result = upload(image.file, folder='chat')
-            url_image = upload_result['secure_url']
         
         vstore.from_texts(
             texts=[question, response_split], embeddings=embeddings,
