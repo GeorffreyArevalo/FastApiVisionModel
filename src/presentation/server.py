@@ -4,6 +4,7 @@ from fastapi import APIRouter, FastAPI
 from huggingface_hub import login
 
 from src.utils.get_envs import envs
+from src.utils.load_db_vectorial import VectorialDB
 from src.utils.load_model import ModelProcessor
 
 
@@ -22,14 +23,16 @@ class Server:
         )
         login( token=envs()['HUGGING_FACE_TOKEN'] )
         
-    def load_model(self):
+    def load_models(self):
         ModelProcessor.get_model_processor()
+        VectorialDB.get_db_vectorial()
         
     def start(self):
         self.config()
-        self.load_model()
+        self.load_models()
         self.__app.include_router(self.routes)
         return self.__app
+
 
 
 

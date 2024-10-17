@@ -1,5 +1,5 @@
 
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import (APIRouter, Depends, File, Form, HTTPException, UploadFile,
                      status)
@@ -33,7 +33,8 @@ class ChatRoutes:
                 
         @router.post("/send_message")
         async def get_routes(question: Annotated[str, Form()],
-                             image: Annotated[UploadFile, File()],
+                             id_chat: Annotated[int, Form()],
+                             image: Optional[UploadFile] = File(None),
                              auth_username: str = Depends( JwtUtil.get_user_authenticated ),
                              db: Session = Depends(get_db)
             ):
@@ -41,7 +42,7 @@ class ChatRoutes:
             if auth_username is None:
                 raise HTTPException( status_code=status.HTTP_401_UNAUTHORIZED, detail='Acceso denegado.' )
             
-            return ChatDataSource.send_message(db=db, image=image, question=question)
+            return ChatDataSource.send_message(db=db, image=image, question=question, id_chat=id_chat, id_user=auth_user.id)
         
         return router
         

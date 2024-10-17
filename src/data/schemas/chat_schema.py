@@ -2,15 +2,10 @@ from pydantic import BaseModel
 
 
 class ChatCreate(BaseModel):
-    question: str
+    title: str | None
 
-class ChatBase(ChatCreate):
-    answer: str
-
-class ChatSchema(ChatBase):
+class ChatSchema(ChatCreate):
     id: int
-    image: str | None
-    vectorial_db_id: str | None
     user_id: str
     class Config:
         orm_mode = True
