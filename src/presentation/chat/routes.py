@@ -33,7 +33,7 @@ class ChatRoutes:
                 
         @router.post("/send_message")
         async def get_routes(question: Annotated[str, Form()],
-                             id_chat: Annotated[int, Form()],
+                             id_chat: Optional[int] = Form(None),
                              image: Optional[UploadFile] = File(None),
                              auth_username: str = Depends( JwtUtil.get_user_authenticated ),
                              db: Session = Depends(get_db)
