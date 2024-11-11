@@ -1,8 +1,8 @@
 
 from typing import Annotated, Optional
 
-from fastapi import (APIRouter, Depends, File, Form, HTTPException, UploadFile,
-                     status)
+from cloudinary.uploader import upload
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from src.data.database import SessionLocal
@@ -39,8 +39,10 @@ class ChatRoutes:
                              db: Session = Depends(get_db)
             ):
             auth_user = UserDataSource.get_user_by_username(db=db, username=auth_username )
+
             if auth_user is None:
                 raise HTTPException( status_code=status.HTTP_401_UNAUTHORIZED, detail='Acceso denegado.' )
+            
             
             return ChatDataSource.send_message(db=db, image=image, question=question, id_chat=id_chat, id_user=auth_user.id)
         

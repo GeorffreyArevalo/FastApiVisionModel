@@ -1,4 +1,6 @@
 
+import copy
+
 from cloudinary.uploader import upload
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -42,8 +44,6 @@ class ChatDataSource:
         src_lang: str,
         tgt_lang: str
     ):
-        
-        print(text)
         translate = ModelProcessor.get_model_translate()
         text_translated = translate(text, src_lang=src_lang, tgt_lang=tgt_lang)
         return text_translated[0]['translation_text']
@@ -57,9 +57,11 @@ class ChatDataSource:
         
         messages_db = ChatDataSource.get_memory_model(image, id_chat, question)
         
+
         [response, url_image, question_en, response_en] = ChatDataSource.get_response_model( question, image, messages_db )
         
         ChatDataSource.save_data_db_vectorial( url_image=url_image, question=question, response_split=response, id_chat=id_chat, question_en=question_en, response_en=response_en )
+
         
         return {
             "question": question,
@@ -71,6 +73,7 @@ class ChatDataSource:
     def get_memory_model(image: UploadFile | None, id_chat: int, question: str):
         [ vstore, embeddings, INDEX_NAME ] = VectorialDB.get_db_vectorial()
         
+
         messages_vectorial = vstore.similarity_search( filter={'id_chat': id_chat}, query=question, k=10 )
         
         message_image = None
@@ -106,6 +109,7 @@ class ChatDataSource:
         
     @staticmethod
     def save_data_db_vectorial( url_image: str, question: str, response_split: str, id_chat: int, question_en: str, response_en: str):
+
         [ vstore, embeddings, INDEX_NAME ] = VectorialDB.get_db_vectorial()
         
         vstore.from_texts(
@@ -135,8 +139,6 @@ class ChatDataSource:
             
             upload_result = upload(image.file, folder='chat')
             url_image = upload_result['secure_url']
-            
-            print(url_image)
             
             messages.append(
                 {
@@ -169,8 +171,6 @@ class ChatDataSource:
                 }
             )
             
-        print(messages)
-        
         response = client.chat.completions.create(
             model='ft:gpt-4o-2024-08-06:personal::APjkVqPn',
             messages=messages

@@ -16,9 +16,7 @@ class VectorialDB:
     def get_db_vectorial():
         if VectorialDB.vstore is None:
             os.environ['PINECONE_API_KEY'] = envs()['API_KEY_PINECONE']
-            
             pc = Pinecone( api_key=envs()['API_KEY_PINECONE'] )
-            
             VectorialDB.INDEX_NAME = envs()['INDEX_NAME_PINECONE']
             model_id_embeddings = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
             VectorialDB.embeddings = HuggingFaceEmbeddings( model_name=model_id_embeddings )
