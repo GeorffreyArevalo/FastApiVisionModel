@@ -1,5 +1,4 @@
 from openai import OpenAI
-from transformers import pipeline
 
 from src.utils.get_envs import envs
 
@@ -17,12 +16,6 @@ class ModelProcessor:
             
         return ModelProcessor.client
     
-    @staticmethod
-    def get_model_translate():
-        if ModelProcessor.translate is None:
-            ModelProcessor.translate = pipeline('translation', model='facebook/m2m100_1.2B')
-            
-        return ModelProcessor.translate
 
 
 

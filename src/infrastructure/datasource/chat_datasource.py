@@ -1,6 +1,3 @@
-
-import copy
-
 from cloudinary.uploader import upload
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -41,12 +38,26 @@ class ChatDataSource:
     @staticmethod
     def translate_text(
         text: str,
-        src_lang: str,
-        tgt_lang: str
+        lng: str
     ):
-        translate = ModelProcessor.get_model_translate()
-        text_translated = translate(text, src_lang=src_lang, tgt_lang=tgt_lang)
-        return text_translated[0]['translation_text']
+        client = ModelProcessor.get_model_processor()
+        
+        response = client.chat.completions.create(
+            model = 'gpt-4o-mini-2024-07-18',
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Traduce el siguiente texto a {lng}: {text}"
+                        }
+                    ]
+                }
+            ]
+        )
+        
+        return response.choices[0].message.content
     
         
     @staticmethod
@@ -132,7 +143,7 @@ class ChatDataSource:
     def get_response_model( question: str, image: UploadFile | None, messages: list ):
         client = ModelProcessor.get_model_processor()
         
-        question_traduction = ChatDataSource.translate_text( text=question, src_lang="es", tgt_lang="en" )
+        question_traduction = ChatDataSource.translate_text( text=question, lng="inglés" )
         
         url_image = ''
         if image:
@@ -175,6 +186,6 @@ class ChatDataSource:
             model='ft:gpt-4o-2024-08-06:personal::APjkVqPn',
             messages=messages
         )
-        response_traduction = ChatDataSource.translate_text( text=response.choices[0].message.content, src_lang="en", tgt_lang="es" )
+        response_traduction = ChatDataSource.translate_text( text=response.choices[0].message.content, lng="español" )
         return [response_traduction, url_image, question_traduction, response.choices[0].message.content]
         

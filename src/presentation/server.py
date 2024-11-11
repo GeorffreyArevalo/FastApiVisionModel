@@ -1,7 +1,6 @@
 import cloudinary
 from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI
-from huggingface_hub import login
 
 from src.utils.get_envs import envs
 from src.utils.load_db_vectorial import VectorialDB
@@ -21,11 +20,9 @@ class Server:
             api_secret = envs()['CLOUDINARY_API_SECRET'],
             secure = True
         )
-        login( token=envs()['HUGGING_FACE_TOKEN'] )
         
     def load_models(self):
         ModelProcessor.get_model_processor()
-        ModelProcessor.get_model_translate()
         VectorialDB.get_db_vectorial()
         
     def start(self):
