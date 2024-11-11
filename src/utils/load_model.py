@@ -1,40 +1,28 @@
+from openai import OpenAI
+from transformers import pipeline
 
-
-import torch
-from transformers import (
-    AutoProcessor,
-    BitsAndBytesConfig,
-    MllamaForConditionalGeneration,
-)
+from src.utils.get_envs import envs
 
 
 class ModelProcessor:
     
-    model = None
-    processor = None
-       
+    client=None
+    translate=None
+    
     @staticmethod
     def get_model_processor():
         
-        if ModelProcessor.model is None:
+        if ModelProcessor.client is None:
+            ModelProcessor.client = OpenAI(api_key=envs()['OPENAI_KEY'])
             
-            bnb_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_quant_type="nf4",
-                bnb_4bit_compute_dtype=torch.bfloat16
-            )
-            
-            model_id = "meta-llama/Llama-3.2-11B-Vision-Instruct"
-            
-            ModelProcessor.model = MllamaForConditionalGeneration.from_pretrained(
-                model_id,
-                quantization_config=bnb_config
-            )
-            
-            ModelProcessor.processor = AutoProcessor.from_pretrained(model_id)
-        
-        return [ModelProcessor.model, ModelProcessor.processor]
+        return ModelProcessor.client
     
+    @staticmethod
+    def get_model_translate():
+        if ModelProcessor.translate is None:
+            ModelProcessor.translate = pipeline('translation', model='facebook/m2m100_1.2B')
+            
+        return ModelProcessor.translate
 
 
 

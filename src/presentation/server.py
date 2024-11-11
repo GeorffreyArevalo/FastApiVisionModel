@@ -25,6 +25,7 @@ class Server:
         
     def load_models(self):
         ModelProcessor.get_model_processor()
+        ModelProcessor.get_model_translate()
         VectorialDB.get_db_vectorial()
         
     def start(self):

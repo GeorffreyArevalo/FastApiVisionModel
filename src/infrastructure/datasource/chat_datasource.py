@@ -1,8 +1,6 @@
 
-import requests
 from cloudinary.uploader import upload
-from fastapi import UploadFile
-from PIL import Image
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from src.data.models.chat_model import ChatModel
@@ -11,6 +9,45 @@ from src.utils.load_model import ModelProcessor
 
 
 class ChatDataSource:
+    
+    
+    @staticmethod
+    def get_chats_by_user( db: Session, id_user: int ):
+        chats = db.query( ChatModel ).filter( ChatModel.user_id == id_user ).all()
+        return chats
+    
+    
+    @staticmethod
+    def get_messages_by_chat( db: Session, id_chat: int ):
+        chat = db.query(ChatModel).filter(ChatModel.id == id_chat).first()
+        if chat is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='El id del chat no existe.')
+        [ vstore, embeddings, INDEX_NAME ] = VectorialDB.get_db_vectorial()
+        messages_vectorial = vstore.similarity_search( filter={'id_chat': id_chat}, query='' )
+        
+        data = []
+        
+        for message in messages_vectorial:
+            data.append({
+                "role": message.metadata['role'],
+                "content": message.page_content
+            })
+            
+        return data
+        
+    
+    @staticmethod
+    def translate_text(
+        text: str,
+        src_lang: str,
+        tgt_lang: str
+    ):
+        
+        print(text)
+        translate = ModelProcessor.get_model_translate()
+        text_translated = translate(text, src_lang=src_lang, tgt_lang=tgt_lang)
+        return text_translated[0]['translation_text']
+    
         
     @staticmethod
     def send_message( db: Session, question: str, image: UploadFile | None, id_chat: int | None, id_user: int):
@@ -18,75 +55,64 @@ class ChatDataSource:
         if id_chat is None:
             id_chat = ChatDataSource.save_chat( db=db, title=question, id_user=id_user )
         
-        [messages_db, url_image_db] = ChatDataSource.get_memory_model(image, id_chat, question)
+        messages_db = ChatDataSource.get_memory_model(image, id_chat, question)
         
-        image_pillow = None
+        [response, url_image, question_en, response_en] = ChatDataSource.get_response_model( question, image, messages_db )
         
-        if url_image_db:
-            image_pillow = Image.open( requests.get(url_image_db, stream=True).raw )
-            
-        if image:
-            image_pillow = Image.open( image.file )
-        
-        response = ChatDataSource.get_response_model( question, image_pillow, messages_db, image is not None )
-        
-        response_split = response.split('<|start_header_id|>assistant<|end_header_id|>\n\n')[-1].split('<|eot_id|>')[0]
-        
-        ChatDataSource.save_data_db_vectorial( image=image, question=question, response_split=response_split, id_chat=id_chat )
+        ChatDataSource.save_data_db_vectorial( url_image=url_image, question=question, response_split=response, id_chat=id_chat, question_en=question_en, response_en=response_en )
         
         return {
             "question": question,
-            "answer": response_split
+            "answer": response
         }
         
         
     @staticmethod
     def get_memory_model(image: UploadFile | None, id_chat: int, question: str):
-        [ vstore ] = VectorialDB.get_db_vectorial()
+        [ vstore, embeddings, INDEX_NAME ] = VectorialDB.get_db_vectorial()
         
         messages_vectorial = vstore.similarity_search( filter={'id_chat': id_chat}, query=question, k=10 )
-        messages_vectorial_images = vstore.similarity_search( filter={ "image": {"$exists": True, "$ne": ""} }, query='' )
         
         message_image = None
         messages = []
-        url_image = None
         
         if image is None:
+            messages_vectorial_images = vstore.similarity_search( filter={ "image": {"$exists": True, "$ne": ""} }, query='' )
             message_image = messages_vectorial_images[-1] if len( messages_vectorial_images ) > 0 else None
             messages.append({
-                'role': message_image.metadata['role'],
-                'content': [
-                    {"type": "image"},
-                    {"type": "text", "text": message_image.page_content}
+                "role": message_image.metadata['role'],
+                "content": [
+                    {"type": "text", "text": message_image.metadata['text_en']},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": message_image.metadata['image'],
+                            "detail": "low"
+                        },
+                    },
                 ]
             })
-            
-            url_image = message_image.metadata['image']
         
         for message_data in messages_vectorial:
             messages.append({
-                'role': message_data.metadata['role'],
-                'content': [
-                    {"type": "text", "text": message_data.page_content}
+                "role": message_data.metadata['role'],
+                "content": [
+                    {"type": "text", "text": message_data.metadata['text_en']}
                 ]
             })
         
-        return [messages, url_image]
+        return messages
     
         
     @staticmethod
-    def save_data_db_vectorial( image: UploadFile | None, question: str, response_split: str, id_chat: int):
+    def save_data_db_vectorial( url_image: str, question: str, response_split: str, id_chat: int, question_en: str, response_en: str):
         [ vstore, embeddings, INDEX_NAME ] = VectorialDB.get_db_vectorial()
-        url_image = ''
-        if image:
-            upload_result = upload(image.file, folder='chat')
-            url_image = upload_result['secure_url']
         
         vstore.from_texts(
-            texts=[question, response_split], embeddings=embeddings,
+            [question, response_split], embeddings,
             metadatas=[
-                {'role': 'user', 'id_chat': id_chat, 'image': url_image},
-                {'role': 'assistant', 'id_chat': id_chat}
+                {'role': 'user', 'id_chat': id_chat, 'image': url_image, 'text_en': question_en },
+                {'role': 'assistant', 'id_chat': id_chat, 'text_en': response_en}
             ], index_name=INDEX_NAME
         )
         
@@ -99,46 +125,56 @@ class ChatDataSource:
         return chat_db.id
         
     @staticmethod
-    def get_response_model( question: str, image: Image, messages: list, has_image: bool ):
-        [model, processor] = ModelProcessor.get_model_processor()
+    def get_response_model( question: str, image: UploadFile | None, messages: list ):
+        client = ModelProcessor.get_model_processor()
         
-        if has_image:
-            messages.append([
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image"},
-                        {
-                            "type": "text",
-                            "text": question
-                        },
-                    ]
-                }
-            ])
-        else:
-            messages.append([
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": question
-                        },
-                    ]
-                }
-            ])
+        question_traduction = ChatDataSource.translate_text( text=question, src_lang="es", tgt_lang="en" )
+        
+        url_image = ''
+        if image:
             
+            upload_result = upload(image.file, folder='chat')
+            url_image = upload_result['secure_url']
+            
+            print(url_image)
+            
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": question_traduction
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": url_image,
+                                "detail": "low"
+                            }
+                        },
+                    ]
+                }
+            )
+        else:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": question_traduction
+                        },
+                    ]
+                }
+            )
+            
+        print(messages)
         
-        input_text = processor.apply_chat_template( messages, add_generation_prompt=True )
-        
-        inputs = processor(
-            image,
-            input_text,
-            add_special_tokens=False,
-            return_tensors="pt"
-        ).to(model.device)
-        
-        output = model.generate(**inputs, max_new_tokens=1000)
-        
-        return processor.decode(output[0])
+        response = client.chat.completions.create(
+            model='ft:gpt-4o-2024-08-06:personal::APjkVqPn',
+            messages=messages
+        )
+        response_traduction = ChatDataSource.translate_text( text=response.choices[0].message.content, src_lang="en", tgt_lang="es" )
+        return [response_traduction, url_image, question_traduction, response.choices[0].message.content]
         
