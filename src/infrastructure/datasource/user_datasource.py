@@ -25,7 +25,7 @@ class UserDataSource:
         db.commit()
         db.refresh(db_user)
         jwt = JwtUtil.generate_access_token( data={"username": db_user.username} )
-        db_user.jwt = jwt
+        db_user.token = jwt
         return db_user
     
     @staticmethod
@@ -38,11 +38,11 @@ class UserDataSource:
             raise HTTPException( status_code=status.HTTP_401_UNAUTHORIZED, detail='Credenciales no válidas - Password' )
         
         jwt = JwtUtil.generate_access_token( data={ "username": user_saved.username } )
-        user_saved.jwt = jwt
+        user_saved.token = jwt
         return user_saved
     
     @staticmethod
-    def check_token( db: Session, username: str ):
+    def check_token( username: str ):
         jwt = JwtUtil.generate_access_token( data={"username": username} )
         return jwt
         

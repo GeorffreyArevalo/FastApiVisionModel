@@ -49,7 +49,7 @@ class AuthRoutes:
             if auth_user is None:
                 raise HTTPException( status_code=status.HTTP_401_UNAUTHORIZED, detail='Acceso denegado.' )
             
-            token = UserDataSource.check_token(db=db, username=auth_user.username)
+            token = UserDataSource.check_token(username=auth_user.username)
             
             return {
                 "username": auth_user.username,
