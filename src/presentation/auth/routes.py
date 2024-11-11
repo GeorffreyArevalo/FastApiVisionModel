@@ -52,7 +52,9 @@ class AuthRoutes:
             token = UserDataSource.check_token(db=db, username=auth_user.username)
             
             return {
-                "user": auth_user,
+                "username": auth_user.username,
+                "name": auth_user.name,
+                "id": auth_user.id,
                 "token": token
             }
             
