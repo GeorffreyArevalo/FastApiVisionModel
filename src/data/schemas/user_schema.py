@@ -15,7 +15,7 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: int
     name: str
-    jwt: str
+    token: str
     
 class UserSchema(UserCreate):
     id: int
