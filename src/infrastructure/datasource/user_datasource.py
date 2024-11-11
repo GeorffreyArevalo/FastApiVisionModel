@@ -40,7 +40,11 @@ class UserDataSource:
         jwt = JwtUtil.generate_access_token( data={ "username": user_saved.username } )
         user_saved.jwt = jwt
         return user_saved
-        
+    
+    @staticmethod
+    def check_token( db: Session, username: str ):
+        jwt = JwtUtil.generate_access_token( data={"username": username} )
+        return jwt
         
 
     @staticmethod
