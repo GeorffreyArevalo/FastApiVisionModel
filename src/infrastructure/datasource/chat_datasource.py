@@ -60,6 +60,14 @@ class ChatDataSource:
         
         return response.choices[0].message.content
     
+    @staticmethod
+    def create_chat(db: Session, title: str, id_user: int):
+        chat_db = ChatModel( title=title, user_id=id_user )
+        db.add( chat_db )
+        db.commit()
+        db.refresh( chat_db )
+        return chat_db
+    
         
     @staticmethod
     def send_message( db: Session, question: str, image: UploadFile | None, id_chat: int | None, id_user: int):
