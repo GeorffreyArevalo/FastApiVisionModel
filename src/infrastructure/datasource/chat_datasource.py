@@ -30,7 +30,7 @@ class ChatDataSource:
             data.append({
                 "role": message.metadata['role'],
                 "content": message.page_content,
-                "url_image": message.metadata['image'],
+                "url_image": message.metadata.get('image'),
             })
             
         return data
