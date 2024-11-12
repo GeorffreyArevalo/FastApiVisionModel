@@ -29,7 +29,8 @@ class ChatDataSource:
         for message in messages_vectorial:
             data.append({
                 "role": message.metadata['role'],
-                "content": message.page_content
+                "content": message.page_content,
+                "url_image": message.metadata['image'],
             })
             
         return data
