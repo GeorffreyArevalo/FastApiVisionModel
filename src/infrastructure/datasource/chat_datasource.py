@@ -2,6 +2,8 @@ from cloudinary.uploader import upload
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from sqlalchemy import desc
+
 from src.data.models.chat_model import ChatModel
 from src.utils.load_db_vectorial import VectorialDB
 from src.utils.load_model import ModelProcessor
@@ -12,7 +14,7 @@ class ChatDataSource:
     
     @staticmethod
     def get_chats_by_user( db: Session, id_user: int ):
-        chats = db.query( ChatModel ).filter( ChatModel.user_id == id_user ).all()
+        chats = db.query( ChatModel ).filter( ChatModel.user_id == id_user ).order_by(desc(ChatModel.id)).all()
         return chats
     
     
