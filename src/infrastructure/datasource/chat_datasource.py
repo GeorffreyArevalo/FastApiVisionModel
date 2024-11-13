@@ -70,7 +70,6 @@ class ChatDataSource:
         db.refresh( chat_db )
         return chat_db
     
-        
     @staticmethod
     def send_message( db: Session, question: str, image: UploadFile | None, id_chat: int | None, id_user: int):
         
