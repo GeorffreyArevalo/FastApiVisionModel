@@ -72,6 +72,9 @@ class ChatDataSource:
                 }
             ]
         )
+        
+        response_translated = response.choices[0].message.content.replace('"', '')
+        
         logger.info(f'Respusta: {response.choices[0].message.content}')
         
         return response.choices[0].message.content
