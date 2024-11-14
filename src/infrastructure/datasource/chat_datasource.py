@@ -56,6 +56,8 @@ class ChatDataSource:
     ):
         client = ModelProcessor.get_model_processor()
         
+        logger.info(f'Traduciendo a {lng}: {text}')
+          
         response = client.chat.completions.create(
             model = 'gpt-4o-mini-2024-07-18',
             messages=[
@@ -70,6 +72,7 @@ class ChatDataSource:
                 }
             ]
         )
+        logger.info(f'Respusta: {response.choices[0].message.content}')
         
         return response.choices[0].message.content
     
