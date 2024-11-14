@@ -75,9 +75,9 @@ class ChatDataSource:
         
         response_translated = response.choices[0].message.content.replace('"', '')
         
-        logger.info(f'Respusta: {response.choices[0].message.content}')
+        logger.info(f'Respusta: {response_translated}')
         
-        return response.choices[0].message.content
+        return response_translated
     
     @staticmethod
     def create_chat(db: Session, title: str, id_user: int):
