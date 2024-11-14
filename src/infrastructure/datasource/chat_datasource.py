@@ -9,6 +9,15 @@ from src.utils.load_db_vectorial import VectorialDB
 from src.utils.load_model import ModelProcessor
 from datetime import datetime
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger("mi_api")
+
+
 class ChatDataSource:
     
     
@@ -26,11 +35,9 @@ class ChatDataSource:
         [ vstore, embeddings, INDEX_NAME ] = VectorialDB.get_db_vectorial()
         messages_vectorial = vstore.similarity_search( filter={'id_chat': id_chat}, query='' )
         
-        print(messages_vectorial)
-        
-        messages_vectorial_sorted = sorted( messages_vectorial, key= lambda x: x.metadata.get('timestamp') );
-        
-        print(messages_vectorial_sorted)
+        logger.info(messages_vectorial)
+        messages_vectorial_sorted = sorted( messages_vectorial, key= lambda x: x.metadata.get('timestamp') )
+        logger.info(messages_vectorial_sorted)
         
         data = []
         
@@ -82,13 +89,12 @@ class ChatDataSource:
         if id_chat is None:
             id_chat = ChatDataSource.save_chat( db=db, title=question, id_user=id_user )
         
-        question_traduction = ChatDataSource.translate_text( text=question, lng="inglés" )
+        messages_db = ChatDataSource.get_memory_model(image, id_chat, question)
         
-        messages_db = ChatDataSource.get_memory_model(image, id_chat, question_traduction)
 
-        [response, url_image, response_en] = ChatDataSource.get_response_model( question_traduction, image, messages_db )
+        [response, url_image, question_en, response_en] = ChatDataSource.get_response_model( question, image, messages_db )
         
-        ChatDataSource.save_data_db_vectorial( url_image=url_image, question=question, response_split=response, id_chat=id_chat, question_en=question_traduction, response_en=response_en )
+        ChatDataSource.save_data_db_vectorial( url_image=url_image, question=question, response_split=response, id_chat=id_chat, question_en=question_en, response_en=response_en )
 
         
         return {
@@ -160,6 +166,8 @@ class ChatDataSource:
     def get_response_model( question: str, image: UploadFile | None, messages: list ):
         client = ModelProcessor.get_model_processor()
         
+        question_traduction = ChatDataSource.translate_text( text=question, lng="inglés" )
+        
         url_image = ''
         if image:
             
@@ -172,7 +180,7 @@ class ChatDataSource:
                     "content": [
                         {
                             "type": "text",
-                            "text": question
+                            "text": question_traduction
                         },
                         {
                             "type": "image_url",
@@ -191,7 +199,7 @@ class ChatDataSource:
                     "content": [
                         {
                             "type": "text",
-                            "text": question
+                            "text": question_traduction
                         },
                     ]
                 }
@@ -202,5 +210,5 @@ class ChatDataSource:
             messages=messages
         )
         response_traduction = ChatDataSource.translate_text( text=response.choices[0].message.content, lng="español" )
-        return [response_traduction, url_image, response.choices[0].message.content]
+        return [response_traduction, url_image, question_traduction, response.choices[0].message.content]
         
