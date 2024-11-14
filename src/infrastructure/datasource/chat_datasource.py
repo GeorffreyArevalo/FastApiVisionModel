@@ -66,7 +66,7 @@ class ChatDataSource:
                     "content": [
                         {
                             "type": "text",
-                            "text": f"Traduce el siguiente texto a {lng}: {text}"
+                            "text": f'Traduce el siguiente texto, el que está en comillas, a {lng} y responde solo con el texto traducido: "{text}"'
                         }
                     ]
                 }
