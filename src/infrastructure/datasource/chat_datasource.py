@@ -26,7 +26,7 @@ class ChatDataSource:
         [ vstore, embeddings, INDEX_NAME ] = VectorialDB.get_db_vectorial()
         messages_vectorial = vstore.similarity_search( filter={'id_chat': id_chat}, query='' )
         
-        messages_vectorial_sorted = sorted( messages_vectorial, key= lambda x: x.metadata['timestamp'] );
+        messages_vectorial_sorted = sorted( messages_vectorial, key= lambda x: x.metadata.get('timestamp') );
         
         data = []
         
