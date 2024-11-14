@@ -33,11 +33,9 @@ class ChatDataSource:
         if chat is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='El id del chat no existe.')
         [ vstore, embeddings, INDEX_NAME ] = VectorialDB.get_db_vectorial()
-        messages_vectorial = vstore.similarity_search( filter={'id_chat': id_chat}, query='' )
+        messages_vectorial = vstore.similarity_search( filter={'id_chat': id_chat}, query='', k=1000 )
         
-        logger.info(messages_vectorial)
         messages_vectorial_sorted = sorted( messages_vectorial, key= lambda x: x.metadata.get('timestamp') )
-        logger.info(messages_vectorial_sorted)
         
         data = []
         
