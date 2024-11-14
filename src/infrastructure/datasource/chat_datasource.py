@@ -7,7 +7,7 @@ from sqlalchemy import desc
 from src.data.models.chat_model import ChatModel
 from src.utils.load_db_vectorial import VectorialDB
 from src.utils.load_model import ModelProcessor
-
+from datetime import datetime
 
 class ChatDataSource:
     
@@ -26,9 +26,11 @@ class ChatDataSource:
         [ vstore, embeddings, INDEX_NAME ] = VectorialDB.get_db_vectorial()
         messages_vectorial = vstore.similarity_search( filter={'id_chat': id_chat}, query='' )
         
+        messages_vectorial_sorted = sorted( messages_vectorial, key= lambda x: x.metadata['timestamp'] );
+        
         data = []
         
-        for message in messages_vectorial:
+        for message in messages_vectorial_sorted:
             data.append({
                 "role": message.metadata['role'],
                 "content": message.page_content,
@@ -76,12 +78,13 @@ class ChatDataSource:
         if id_chat is None:
             id_chat = ChatDataSource.save_chat( db=db, title=question, id_user=id_user )
         
-        messages_db = ChatDataSource.get_memory_model(image, id_chat, question)
+        question_traduction = ChatDataSource.translate_text( text=question, lng="inglés" )
         
+        messages_db = ChatDataSource.get_memory_model(image, id_chat, question_traduction)
 
-        [response, url_image, question_en, response_en] = ChatDataSource.get_response_model( question, image, messages_db )
+        [response, url_image, response_en] = ChatDataSource.get_response_model( question_traduction, image, messages_db )
         
-        ChatDataSource.save_data_db_vectorial( url_image=url_image, question=question, response_split=response, id_chat=id_chat, question_en=question_en, response_en=response_en )
+        ChatDataSource.save_data_db_vectorial( url_image=url_image, question=question, response_split=response, id_chat=id_chat, question_en=question_traduction, response_en=response_en )
 
         
         return {
@@ -136,8 +139,8 @@ class ChatDataSource:
         vstore.from_texts(
             [question, response_split], embeddings,
             metadatas=[
-                {'role': 'user', 'id_chat': id_chat, 'image': url_image, 'text_en': question_en },
-                {'role': 'assistant', 'id_chat': id_chat, 'text_en': response_en}
+                {'role': 'user', 'id_chat': id_chat, 'image': url_image, 'text_en': question_en, 'timestamp': datetime.now().timestamp() },
+                {'role': 'assistant', 'id_chat': id_chat, 'text_en': response_en, 'timestamp': datetime.now().timestamp()}
             ], index_name=INDEX_NAME
         )
         
@@ -153,8 +156,6 @@ class ChatDataSource:
     def get_response_model( question: str, image: UploadFile | None, messages: list ):
         client = ModelProcessor.get_model_processor()
         
-        question_traduction = ChatDataSource.translate_text( text=question, lng="inglés" )
-        
         url_image = ''
         if image:
             
@@ -167,7 +168,7 @@ class ChatDataSource:
                     "content": [
                         {
                             "type": "text",
-                            "text": question_traduction
+                            "text": question
                         },
                         {
                             "type": "image_url",
@@ -186,7 +187,7 @@ class ChatDataSource:
                     "content": [
                         {
                             "type": "text",
-                            "text": question_traduction
+                            "text": question
                         },
                     ]
                 }
@@ -197,5 +198,5 @@ class ChatDataSource:
             messages=messages
         )
         response_traduction = ChatDataSource.translate_text( text=response.choices[0].message.content, lng="español" )
-        return [response_traduction, url_image, question_traduction, response.choices[0].message.content]
+        return [response_traduction, url_image, response.choices[0].message.content]
         
